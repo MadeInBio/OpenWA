@@ -91,29 +91,35 @@ Queste variabili vengono interpolate dentro `docker-compose.dokploy.yml`
 
 ---
 
-## 6. Dominio / HTTPS (label Traefik nel compose)
+## 6. Dominio / HTTPS (UI Domains di Dokploy)
 
-Per un **Compose multi-servizio**, la UI *Domains* di Dokploy non permette di scegliere
-quale container esporre (il suo dialog dominio non ha il campo *Service Name*), quindi il
-routing è definito direttamente dalle **label Traefik** del servizio `dashboard` nel
-[`docker-compose.dokploy.yml`](../docker-compose.dokploy.yml).
+Quando **tutti** i servizi del Compose sono attivi (in particolare il container
+`dashboard`), assegna il dominio dalla UI di Dokploy puntando al servizio **dashboard**:
 
-Cosa devi fare:
-1. Imposta la variabile **`DOMAIN`** nelle Environment con l'host esatto (es.
-   `www.owa.19062022.xyz`): le label la usano per la regola `Host(...)` e l'API per
-   `BASE_URL`/`DASHBOARD_URL`/`CORS_ORIGINS`.
-2. **NON** aggiungere lo stesso host dalla UI *Domains*: creerebbe un secondo router
-   Traefik con la stessa regola Host, in conflitto con quello delle label. Se l'avevi già
-   aggiunto, **eliminalo**.
-3. Redeploy. Traefik richiede il certificato Let's Encrypt automaticamente (label
-   `tls.certresolver=letsencrypt`) e instrada `https://DOMAIN` → `dashboard:80`.
+1. Servizio Compose → tab **Domains → Create Domain**.
+2. Imposta:
 
-> Perché `dashboard` e non `openwa-api`? La dashboard (nginx) inoltra internamente le
-> chiamate `/api/` e `/socket.io/` all'API: esponendo solo la dashboard ottieni UI + API
-> + WebSocket sullo stesso dominio, in HTTPS.
+| Campo                      | Valore                 |
+| -------------------------- | ---------------------- |
+| **Host**                   | `www.owa.19062022.xyz` |
+| **Service** (se richiesto) | `dashboard`            |
+| **Container Port**         | `80`                   |
+| **Path**                   | `/`                    |
+| **HTTPS**                  | ON                     |
+| **Certificate Provider**   | `Let's Encrypt`        |
+
+3. Salva e fai **Redeploy**.
+
+Dokploy genera da solo le label Traefik (routing + redirect HTTP→HTTPS) e richiede il
+certificato. Il servizio `dashboard` nel compose resta su `dokploy-network` proprio per
+essere raggiunto dal Traefik di Dokploy.
+
+> ⚠️ Punta a **`dashboard` : 80**, non a `openwa-api` : 2785. La dashboard (nginx) inoltra
+> internamente `/api/` e `/socket.io/` all'API, quindi UI + API + WebSocket finiscono sullo
+> stesso dominio in HTTPS. Se punti all'API ottieni 404 su `/` (porta 2785) o 502 (porta 80).
 >
-> I nomi dei router/middleware (`openwa`, `openwa-web`, `openwa-https`) sono globali in
-> Traefik: se hai un altro progetto con quegli stessi nomi, rinominali nel compose.
+> La variabile `DOMAIN` nelle Environment resta necessaria: l'API la usa per
+> `BASE_URL`/`DASHBOARD_URL`/`CORS_ORIGINS`. Tienila allineata all'Host.
 
 ---
 

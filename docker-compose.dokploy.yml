@@ -84,27 +84,13 @@ services:
     restart: unless-stopped
     depends_on:
       - openwa-api
+    # Il dominio si assegna dalla UI "Domains" di Dokploy puntando a QUESTO
+    # servizio (dashboard) sulla porta 80. Il servizio resta su dokploy-network
+    # cosi' il Traefik di Dokploy puo' raggiungerlo e applicare le proprie label.
+    # NON aggiungere qui label di routing: andrebbero in conflitto con la UI.
     networks:
       - openwa-internal
       - dokploy-network
-    # Routing gestito via label Traefik: per un Compose multi-servizio la UI
-    # "Domains" di Dokploy non permette di scegliere il container target, quindi
-    # esponiamo esplicitamente QUESTO servizio (dashboard:80). Imposta DOMAIN
-    # nelle Environment del progetto. NON aggiungere lo stesso host dalla UI
-    # Domains: creerebbe un secondo router Traefik in conflitto.
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=dokploy-network
-      # HTTPS (entrypoint websecure) + certificato Let's Encrypt
-      - traefik.http.routers.openwa.rule=Host(`${DOMAIN}`)
-      - traefik.http.routers.openwa.entrypoints=websecure
-      - traefik.http.routers.openwa.tls.certresolver=letsencrypt
-      - traefik.http.services.openwa.loadbalancer.server.port=80
-      # Redirect HTTP -> HTTPS
-      - traefik.http.routers.openwa-web.rule=Host(`${DOMAIN}`)
-      - traefik.http.routers.openwa-web.entrypoints=web
-      - traefik.http.routers.openwa-web.middlewares=openwa-https
-      - traefik.http.middlewares.openwa-https.redirectscheme.scheme=https
 
   # ===== PostgreSQL =====
   postgres:
