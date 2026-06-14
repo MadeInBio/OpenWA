@@ -91,30 +91,29 @@ Queste variabili vengono interpolate dentro `docker-compose.dokploy.yml`
 
 ---
 
-## 6. Dominio / HTTPS (UI Domains di Dokploy)
+## 6. Dominio / HTTPS (label Traefik nel compose)
 
-Il dominio si assegna dalla UI di Dokploy. Nel servizio Compose apri la scheda
-**Domains → Add Domain** e imposta:
+Per un **Compose multi-servizio**, la UI *Domains* di Dokploy non permette di scegliere
+quale container esporre (il suo dialog dominio non ha il campo *Service Name*), quindi il
+routing è definito direttamente dalle **label Traefik** del servizio `dashboard` nel
+[`docker-compose.dokploy.yml`](../docker-compose.dokploy.yml).
 
-| Campo            | Valore                 |
-| ---------------- | ---------------------- |
-| **Host**         | `wa.miodominio.com`    |
-| **Service Name** | `dashboard`            |
-| **Container Port** / **Port** | `80`      |
-| **HTTPS**        | abilitato (ON)         |
-| **Certificate**  | `Let's Encrypt`        |
-| **Path**         | `/` (default)          |
-
-Dokploy genera e applica da solo le label Traefik (incluso il redirect HTTP→HTTPS) e
-richiede il certificato a Let's Encrypt. Il servizio `dashboard` nel compose resta
-collegato a `dokploy-network` proprio per essere raggiunto dal Traefik di Dokploy.
+Cosa devi fare:
+1. Imposta la variabile **`DOMAIN`** nelle Environment con l'host esatto (es.
+   `www.owa.19062022.xyz`): le label la usano per la regola `Host(...)` e l'API per
+   `BASE_URL`/`DASHBOARD_URL`/`CORS_ORIGINS`.
+2. **NON** aggiungere lo stesso host dalla UI *Domains*: creerebbe un secondo router
+   Traefik con la stessa regola Host, in conflitto con quello delle label. Se l'avevi già
+   aggiunto, **eliminalo**.
+3. Redeploy. Traefik richiede il certificato Let's Encrypt automaticamente (label
+   `tls.certresolver=letsencrypt`) e instrada `https://DOMAIN` → `dashboard:80`.
 
 > Perché `dashboard` e non `openwa-api`? La dashboard (nginx) inoltra internamente le
 > chiamate `/api/` e `/socket.io/` all'API: esponendo solo la dashboard ottieni UI + API
 > + WebSocket sullo stesso dominio, in HTTPS.
 >
-> La variabile `DOMAIN` nelle Environment resta comunque necessaria: l'API la usa per
-> `BASE_URL`, `DASHBOARD_URL` e `CORS_ORIGINS`. Tienila allineata all'Host del dominio.
+> I nomi dei router/middleware (`openwa`, `openwa-web`, `openwa-https`) sono globali in
+> Traefik: se hai un altro progetto con quegli stessi nomi, rinominali nel compose.
 
 ---
 
