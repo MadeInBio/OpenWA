@@ -5,9 +5,10 @@
 # Dokploy fornisce GIA' il proprio Traefik con SSL Let's Encrypt automatico, quindi:
 #   - NON includiamo un Traefik qui dentro
 #   - NON pubblichiamo porte sull'host (niente "ports:")
-#   - Esponiamo SOLO il servizio "dashboard" al dominio pubblico tramite label Traefik.
-#     La dashboard (nginx) fa da reverse-proxy interno verso openwa-api per le rotte
-#     /api/ e /socket.io/ (WebSocket), quindi un solo dominio basta per tutto.
+#   - Il dominio pubblico va assegnato al servizio "dashboard" dalla UI "Domains"
+#     di Dokploy (Service Name: dashboard, Port: 80). La dashboard (nginx) fa da
+#     reverse-proxy interno verso openwa-api per le rotte /api/ e /socket.io/
+#     (WebSocket), quindi un solo dominio basta per tutto.
 #
 # Variabili richieste (impostale nella sezione "Environment" del progetto Dokploy):
 #   DOMAIN              ->  es. wa.miodominio.com  (senza https://)
@@ -83,22 +84,13 @@ services:
     restart: unless-stopped
     depends_on:
       - openwa-api
+    # Il routing del dominio e' gestito dalla UI "Domains" di Dokploy
+    # (Service Name: dashboard, Port: 80): Dokploy applica da solo le label
+    # Traefik necessarie. Il servizio deve restare collegato a dokploy-network
+    # affinche' il Traefik di Dokploy possa raggiungerlo.
     networks:
       - openwa-internal
       - dokploy-network
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=dokploy-network
-      # HTTPS (entrypoint websecure) + certificato Let's Encrypt
-      - traefik.http.routers.openwa.rule=Host(`${DOMAIN}`)
-      - traefik.http.routers.openwa.entrypoints=websecure
-      - traefik.http.routers.openwa.tls.certresolver=letsencrypt
-      - traefik.http.services.openwa.loadbalancer.server.port=80
-      # Redirect HTTP -> HTTPS
-      - traefik.http.routers.openwa-web.rule=Host(`${DOMAIN}`)
-      - traefik.http.routers.openwa-web.entrypoints=web
-      - traefik.http.routers.openwa-web.middlewares=openwa-https
-      - traefik.http.middlewares.openwa-https.redirectscheme.scheme=https
 
   # ===== PostgreSQL =====
   postgres:
